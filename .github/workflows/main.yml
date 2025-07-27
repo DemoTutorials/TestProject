@@ -1,0 +1,29 @@
+name: CI
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Download
+      run: Invoke-WebRequest https://aka.ms/vs/16/release/vs_buildtools.exe -OutFile vs_buildtools.exe
+
+    - name: Extract
+      run: Expand-Archive ngrok.zip
+
+    - name: Auth
+      run: ./ngrok/ngrok.exe authtoken $env:NGROK_AUTH_TOKEN
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+
+    - name: Enable TS
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString "MyPassword" -AsPlainText -Force)
+
+    - name: Create tunnel
+      run: ./ngrok/ngrok.exe tcp 3389
